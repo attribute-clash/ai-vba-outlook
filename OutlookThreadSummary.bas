@@ -222,6 +222,8 @@ Private Function BuildUserPrompt(ByVal mails As Collection) As String
 End Function
 
 Private Function CleanMailBody(ByVal textBody As String) As String
+    ' Историю переписки внутри письма НЕ отсекаем, чтобы модель могла
+    ' дополнительно анализировать контекст, который пришел как цитирование.
     Dim s As String
     s = Replace(textBody, vbCrLf, vbLf)
     s = Replace(s, vbCr, vbLf)
@@ -231,23 +233,21 @@ Private Function CleanMailBody(ByVal textBody As String) As String
 
     Dim out As String
     Dim i As Long
+    Dim previousWasEmpty As Boolean
+
     For i = LBound(lines) To UBound(lines)
         Dim line As String
         line = Trim$(lines(i))
 
         If Len(line) = 0 Then
-            If Right$(out, 2) <> vbCrLf & vbCrLf Then out = out & vbCrLf
-            GoTo ContinueLoop
+            If Not previousWasEmpty Then
+                out = out & vbCrLf
+                previousWasEmpty = True
+            End If
+        Else
+            out = out & line & vbCrLf
+            previousWasEmpty = False
         End If
-
-        If Left$(line, 1) = ">" Then GoTo ContinueLoop
-        If InStr(1, line, "-----Original Message-----", vbTextCompare) > 0 Then Exit For
-        If InStr(1, line, "От:", vbTextCompare) = 1 Then Exit For
-        If InStr(1, line, "From:", vbTextCompare) = 1 Then Exit For
-
-        out = out & line & vbCrLf
-
-ContinueLoop:
     Next i
 
     CleanMailBody = Trim$(out)
